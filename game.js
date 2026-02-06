@@ -1021,6 +1021,10 @@ window.addEventListener("resize", resizeDisplay);
 window.addEventListener("fullscreenchange", resizeDisplay);
 
 window.addEventListener("keydown", (event) => {
+  if (event.code === "Space" && document.activeElement === musicButton) {
+    event.preventDefault();
+    musicButton.blur();
+  }
   if (event.metaKey && event.code === "KeyD") {
     event.preventDefault();
     highScores = [];
@@ -1065,6 +1069,7 @@ if (musicButton) {
   musicButton.addEventListener("click", () => {
     ensureAudio();
     setMusic(!musicOn);
+    musicButton.blur();
   });
 }
 
