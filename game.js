@@ -6,6 +6,7 @@ const FIXED_DT = 1 / 60;
 const PLATFORM_HEIGHT = 8;
 const BIOME_STEP = 500;
 const MUSIC_SRC = "Icy Tower v131 - Opening Theme Song High Quality.mp3";
+const LEADERBOARD_LIMIT = 25;
 const SCORE_STORAGE_KEY = "jumpnbean_highscores";
 const LAST_NAME_KEY = "jumpnbean_lastname";
 const TOKEN_POINTS = 150;
@@ -174,10 +175,11 @@ function loadHighScores() {
       score: entry.score,
     }))
     .sort((a, b) => b.score - a.score)
-    .slice(0, 8);
+    .slice(0, LEADERBOARD_LIMIT);
 }
 
 function saveHighScores() {
+  highScores = highScores.slice(0, LEADERBOARD_LIMIT);
   localStorage.setItem(SCORE_STORAGE_KEY, JSON.stringify(highScores));
   highScore = highScores[0]?.score || 0;
   localStorage.setItem("jumpnbean_highscore", String(highScore));
@@ -197,6 +199,36 @@ function renderScoreList() {
     }
     scoreList.appendChild(li);
   });
+}
+
+async function fetchLeaderboard() {
+  try {
+    const res = await fetch(`/api/scores?limit=${LEADERBOARD_LIMIT}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!Array.isArray(data.scores)) return;
+    highScores = data.scores
+      .filter((entry) => entry && typeof entry.score === "number")
+      .map((entry) => ({ name: sanitizeName(entry.name), score: entry.score }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, LEADERBOARD_LIMIT);
+    saveHighScores();
+  } catch {
+    // keep local fallback
+  }
+}
+
+async function submitScore(name, scoreValue) {
+  try {
+    const res = await fetch("/api/scores", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, score: Math.floor(scoreValue) }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 function openScoreEntry() {
@@ -1080,10 +1112,13 @@ if (scoreSave) {
     if (name.length !== 3) return;
     highScores = [...highScores, { name, score }]
       .sort((a, b) => b.score - a.score)
-      .slice(0, 8);
+      .slice(0, LEADERBOARD_LIMIT);
     saveHighScores();
     lastName = name;
     localStorage.setItem(LAST_NAME_KEY, lastName);
+    submitScore(name, score).then((ok) => {
+      if (ok) fetchLeaderboard();
+    });
     scoreName.disabled = true;
     scoreSave.disabled = true;
     scoreSave.textContent = "Saved";
@@ -1109,6 +1144,7 @@ if (scoreName) {
 }
 
 renderScoreList();
+fetchLeaderboard();
 
 function renderGameToText() {
   const biome = currentBiome();

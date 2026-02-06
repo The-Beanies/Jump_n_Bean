@@ -1,3 +1,6 @@
 .DS_Store
 .codex/
 output/
+node_modules/
+.vercel/
+.env

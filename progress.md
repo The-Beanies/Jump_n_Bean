@@ -23,3 +23,4 @@ Original prompt: Create a small classic game with minimal scope. Its Beany a cof
 - 2026-02-05: Disabled shooting (Space now only jumps), removed skip button, added Enter-to-save then Enter-to-restart flow, added more SFX (coin, stomp, powerup, lose), increased power bonus scoring, and added Cmd+D scoreboard reset.
 - 2026-02-05: Added earned double-jump after wall-jump or stomp, reset on landing; remember last name for score entry; Enter saves then Enter restarts.
 - 2026-02-05: Integrated local MP3 music toggle, added slide-jump combo hop (sparkle + jump boost), full-screen biome safety bar with temporary invulnerability, and combo reset if landing without a hop.
+- 2026-02-05: Added Vercel Postgres leaderboard API (top 25), client fetch/submit integration, and updated local score handling + .gitignore + package.json.
