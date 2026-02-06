@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jump n Bean</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1>Jump n Bean</h1>
+    <p class="sub">Climb upward through new biomes. Collect tokens for score.</p>
+    <canvas id="game" width="320" height="192" aria-label="Jump n Bean game"></canvas>
+    <div class="controls">
+      <button id="music-toggle" class="music-btn" type="button">Music: Off</button>
+    </div>
+    <p class="hint">Move: Arrow keys / A-D. Jump: Space / W / Up.</p>
+  </main>
+  <div id="score-entry" class="score-entry hidden" role="dialog" aria-modal="true" aria-labelledby="score-title">
+    <div class="score-card">
+      <h2 id="score-title">Run Complete</h2>
+      <p class="score-line">Score: <span id="score-value">0</span></p>
+      <label class="score-label" for="score-name">Enter name</label>
+      <input id="score-name" class="score-input" maxlength="3" autocomplete="off" placeholder="AAA" />
+      <div class="score-actions">
+        <button id="score-save" class="score-btn" type="button">Save</button>
+      </div>
+      <h3 class="score-subtitle">High Scores</h3>
+      <ol id="score-list" class="score-list"></ol>
+      <button id="score-restart" class="score-btn" type="button">New Run</button>
+      <p class="score-note">New Run restarts the game.</p>
+    </div>
+  </div>
+  <audio id="music-audio" src="Icy%20Tower%20v131%20-%20Opening%20Theme%20Song%20High%20Quality.mp3" loop></audio>
+  <script src="game.js"></script>
+</body>
+</html>

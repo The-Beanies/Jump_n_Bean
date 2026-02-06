@@ -1,0 +1,25 @@
+Original prompt: Create a small classic game with minimal scope. Its Beany a coffeebean charakter in a jump an run game like super mario (oldschool) in pixel look. fighting burocazy monsters and collecting token coins.
+
+- 2026-02-05: Reworked the game into an Icy Tower-style vertical climber with endless platforms, biome shifts by height, coin pickups, score + high score tracking, and fullscreen toggle. Added deterministic hooks (render_game_to_text, advanceTime).
+- 2026-02-05: Playwright client failed to launch Chromium in this sandbox (Mach port / crashpad permission errors). Could not capture screenshots or render_game_to_text output.
+- 2026-02-05: Tuned jump height + platform gaps, added auto upward scroll that speeds up over time, and animated Beany with squash/stretch + stepping. Adjusted canvas sizing to fit within viewport.
+- 2026-02-05: Playwright run still fails to launch Chromium headless shell due to Mach port permission error (crashpad). No automated screenshots captured.
+- 2026-02-05: Added YouTube music toggle (iframe), jump + wall-jump SFX, wall-jump combo scoring with boost, momentum-based jump height, speed lines, and combo UI. Tuned platform gaps and movement for Icy Tower-style climb.
+- 2026-02-05: Playwright run still failing to launch Chromium headless shell (Mach port permission error), so no automated screenshots or render_game_to_text verification.
+- 2026-02-05: Reworked music toggle to use the YouTube IFrame API for reliable play/pause, added wall-jump spin animation, and changed auto-scroll to ramp by plateaus instead of time.
+- 2026-02-05: Playwright run still failing to launch Chromium headless shell due to Mach port permission error; no automated screenshots captured.
+- 2026-02-05: Simplified music toggle to a click-created YouTube embed iframe with autoplay to work reliably from file:// without IFrame API.
+- 2026-02-05: Added file:// fallback for music button to open the YouTube watch page with autoplay in a new tab (embedded iframe still used for http/https).
+- 2026-02-05: Added biome-specific parallax backdrops, 3D-ish platform faces, richer coin shading, and Beany outline/highlight + shadow for a more dimensional look.
+- 2026-02-05: Playwright run still failing to launch Chromium headless shell (Mach port permission error), so visuals not auto-verified.
+- 2026-02-05: Added end-of-run name entry overlay and persistent high score list (localStorage). List shows top 8 and updates high score.
+- 2026-02-05: Added end-of-run score entry dialog with name input and persistent high score list; save disables input and updates list.
+- 2026-02-05: Added "New Run" button to the score modal to restart without manual refresh.
+- 2026-02-05: Extended wall-jump combo window, added coinScore with higher token points and combo multipliers, and restricted score entry names to 3 letters.
+- 2026-02-05: Playwright run still failing to launch Chromium headless shell; unable to auto-verify new combo/tokens/highscore changes.
+- 2026-02-05: Added wall-jump lockout to prevent same-wall spam (must touch ground or opposite wall), added biome transition banner graphic, and added random hazard monsters that end the run on contact.
+- 2026-02-05: Added enemies that can be stomped or shot, cappuccino projectiles (Space) with bounce boosts, rare siebtrager powerup granting 10s invincibility + higher jumps + blinking/glow, and anti-same-wall spam lockout.
+- 2026-02-05: Increased powerup time bonus scoring, reduced powerup spawn rate, added Cmd+D scoreboard reset, added stomp bonus points, and made cappuccino shots fire upward.
+- 2026-02-05: Disabled shooting (Space now only jumps), removed skip button, added Enter-to-save then Enter-to-restart flow, added more SFX (coin, stomp, powerup, lose), increased power bonus scoring, and added Cmd+D scoreboard reset.
+- 2026-02-05: Added earned double-jump after wall-jump or stomp, reset on landing; remember last name for score entry; Enter saves then Enter restarts.
+- 2026-02-05: Integrated local MP3 music toggle, added slide-jump combo hop (sparkle + jump boost), full-screen biome safety bar with temporary invulnerability, and combo reset if landing without a hop.
