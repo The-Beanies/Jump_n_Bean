@@ -24,3 +24,6 @@ Original prompt: Create a small classic game with minimal scope. Its Beany a cof
 - 2026-02-05: Added earned double-jump after wall-jump or stomp, reset on landing; remember last name for score entry; Enter saves then Enter restarts.
 - 2026-02-05: Integrated local MP3 music toggle, added slide-jump combo hop (sparkle + jump boost), full-screen biome safety bar with temporary invulnerability, and combo reset if landing without a hop.
 - 2026-02-05: Added Vercel Postgres leaderboard API (top 25), client fetch/submit integration, and updated local score handling + .gitignore + package.json.
+- 2026-02-06: Playwright check ran (using temp browsers path). Captured shot-0.png + state-0.json. Console error in file:// mode: fetch to /api/scores not supported (expected for local file scheme).
+- 2026-02-06: Ran longer Playwright action burst. Captured updated shot-0.png + state-0.json (score 94, time 1.55s). Same expected file:// leaderboard fetch error; no new console errors.
+- 2026-02-06: Ran extended Playwright action burst (longer steps). Captured new shot-0.png + state-0.json (time 1.27s). Only console error remains the expected file:// /api/scores fetch block.
