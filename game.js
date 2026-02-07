@@ -6,7 +6,7 @@ const FIXED_DT = 1 / 60;
 const PLATFORM_HEIGHT = 8;
 const BIOME_STEP = 500;
 const MUSIC_SRC = "Icy Tower v131 - Opening Theme Song High Quality.mp3";
-const LEADERBOARD_LIMIT = 25;
+const LEADERBOARD_LIMIT = 20;
 const SCORE_STORAGE_KEY = "jumpnbean_highscores";
 const LAST_NAME_KEY = "jumpnbean_lastname";
 const TOKEN_POINTS = 150;
@@ -334,6 +334,9 @@ function openScoreEntry() {
   if (scoreSave) {
     scoreSave.disabled = true;
     scoreSave.textContent = "Save";
+  }
+  if (scoreRestart) {
+    scoreRestart.style.display = "";
   }
   updateScoreInput();
 }
@@ -1430,6 +1433,10 @@ bindHoldButton(
 if (scoreSave) {
   scoreSave.addEventListener("click", () => {
     if (!scoreName) return;
+    if (scoreSaved) {
+      resetGame();
+      return;
+    }
     const name = normalizeName(scoreName.value.trim());
     if (name.length !== 3) return;
     highScores = [
@@ -1451,6 +1458,11 @@ if (scoreSave) {
     scoreSave.disabled = true;
     scoreSave.textContent = "Saved";
     scoreSaved = true;
+    if (scoreRestart) {
+      scoreRestart.style.display = "none";
+    }
+    scoreSave.disabled = false;
+    scoreSave.textContent = "New Run";
   });
 }
 

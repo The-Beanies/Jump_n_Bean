@@ -1,6 +1,6 @@
 const { sql } = require("@vercel/postgres");
 
-const MAX_LIMIT = 25;
+const MAX_LIMIT = 20;
 const SEED_NAME = "BEA";
 const SEED_SCORE = 500;
 const SEED_LEVELS = 1;
