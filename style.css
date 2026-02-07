@@ -78,20 +78,31 @@ h1 {
   background: #1b1410;
   border: 3px solid #c6a86b;
   color: #f3ead7;
-  padding: 18px 20px;
-  width: min(320px, 90vw);
+  padding: 20px 22px;
+  width: min(380px, 94vw);
   text-align: center;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
 .score-card h2 {
   margin: 0 0 8px;
-  font-size: 18px;
+  font-size: 20px;
   letter-spacing: 1px;
 }
 
 .score-line {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #f0e2c2;
+}
+
+#score-value,
+#level-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffe285;
+  margin-left: 6px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .score-label {
@@ -139,7 +150,7 @@ h1 {
 
 .score-subtitle {
   margin: 10px 0 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: #d7c8ac;
 }
 
@@ -147,7 +158,7 @@ h1 {
   margin: 0;
   padding: 0 0 0 18px;
   text-align: left;
-  font-size: 12px;
+  font-size: 13px;
   color: #f3ead7;
 }
 

@@ -31,3 +31,4 @@ Original prompt: Create a small classic game with minimal scope. Its Beany a cof
 - 2026-02-07: Re-ran Playwright after pagination offset rollback tweak; expected file:// /api/scores fetch error only.
 - 2026-02-07: Added mobile touch controls (left/right/jump) with pointer handling and mobile UI styling.
 - 2026-02-07: Added blood particles and blood stains on enemy stomps.
+- 2026-02-07: Added level tracking (HUD + score modal), death slow-mo before leaderboard, and larger highlighted score/leaderboard UI. Playwright check ran; only expected file:// /api/scores fetch error.

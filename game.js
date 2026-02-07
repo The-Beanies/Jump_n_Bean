@@ -17,6 +17,8 @@ const POWER_BONUS_RATE = 120;
 const SLIDE_WINDOW = 0.28;
 const COMBO_HOP_POINTS = 60;
 const BLOOD_STAIN_LIMIT = 28;
+const DEATH_SLOW_DURATION = 3;
+const DEATH_SLOW_FACTOR = 0.35;
 
 const keys = { left: false, right: false };
 let jumpQueued = false;
@@ -120,6 +122,8 @@ let bannerTimer = 0;
 let bannerBiomeIndex = 0;
 let doubleJumpAvailable = false;
 let safeBarTimer = 0;
+let levelsEarned = 1;
+let deathSlowTimer = 0;
 
 let audioCtx = null;
 let musicOn = false;
@@ -128,6 +132,7 @@ const musicButton = document.getElementById("music-toggle");
 const musicAudio = document.getElementById("music-audio");
 const scoreEntry = document.getElementById("score-entry");
 const scoreValue = document.getElementById("score-value");
+const levelValue = document.getElementById("level-value");
 const scoreName = document.getElementById("score-name");
 const scoreSave = document.getElementById("score-save");
 const scoreList = document.getElementById("score-list");
@@ -289,6 +294,7 @@ async function submitScore(name, scoreValue) {
 function openScoreEntry() {
   if (!scoreEntry) return;
   if (scoreValue) scoreValue.textContent = String(score);
+  if (levelValue) levelValue.textContent = String(levelsEarned);
   renderScoreList();
   leaderboardOffset = 0;
   fetchLeaderboard(0);
@@ -359,6 +365,13 @@ function playPowerSound() {
 
 function playLoseSound() {
   playTone(180, 0.2, "sawtooth", 0.06);
+}
+
+function triggerDeath() {
+  if (state === "lose" || state === "dying") return;
+  state = "dying";
+  deathSlowTimer = DEATH_SLOW_DURATION;
+  playLoseSound();
 }
 
 function setMusic(on) {
@@ -503,6 +516,8 @@ function resetGame() {
   bannerBiomeIndex = 0;
   doubleJumpAvailable = false;
   safeBarTimer = 0;
+  levelsEarned = 1;
+  deathSlowTimer = 0;
   closeScoreEntry();
 
   const baseY = canvas.height - 20;
@@ -541,7 +556,12 @@ function overlaps(a, b) {
 }
 
 function update(dt) {
-  if (state !== "play") return;
+  if (state !== "play" && state !== "dying") return;
+  const realDt = dt;
+  if (state === "dying") {
+    dt *= DEATH_SLOW_FACTOR;
+  }
+  const controlsEnabled = state === "play";
 
   const MAX_SPEED = 150;
   const ACCEL = 900;
@@ -560,7 +580,7 @@ function update(dt) {
   }
   const powerMultiplier = invincibleTimer > 0 ? 1.3 : 1;
 
-  const input = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  const input = controlsEnabled ? (keys.right ? 1 : 0) - (keys.left ? 1 : 0) : 0;
   if (input !== 0) {
     player.vx += input * ACCEL * dt;
     player.facing = input;
@@ -581,7 +601,7 @@ function update(dt) {
   }
   const canWallJump = !player.onGround && wallSide !== 0 && wallJumpLockSide === 0;
 
-  if (jumpQueued) {
+  if (jumpQueued && controlsEnabled) {
     if (player.onGround) {
       const speedBoost = Math.min(Math.abs(player.vx) * 0.45, 90);
       const comboHop = comboTimer > 0 && slideWindow > 0;
@@ -621,8 +641,11 @@ function update(dt) {
     }
   }
   jumpQueued = false;
+  if (!controlsEnabled) {
+    jumpHeld = false;
+  }
 
-  const gravityScale = jumpHeld && player.vy < 0 ? 0.65 : 1;
+  const gravityScale = jumpHeld && controlsEnabled && player.vy < 0 ? 0.65 : 1;
   player.vy = Math.min(player.vy + GRAVITY * gravityScale * dt, MAX_FALL);
 
   const prevY = player.y;
@@ -712,11 +735,7 @@ function update(dt) {
       enemyScore += ENEMY_POINTS;
       playStompSound();
     } else {
-      if (state !== "lose") {
-        state = "lose";
-        playLoseSound();
-        openScoreEntry();
-      }
+      triggerDeath();
     }
   }
 
@@ -725,6 +744,8 @@ function update(dt) {
   const height = Math.max(0, startY - player.y);
   if (height > maxHeight) {
     maxHeight = height;
+    const levelNow = Math.floor(maxHeight / BIOME_STEP) + 1;
+    if (levelNow > levelsEarned) levelsEarned = levelNow;
     const biomeIndex = Math.floor(maxHeight / BIOME_STEP) % BIOMES.length;
     if (biomeIndex !== bannerBiomeIndex) {
       bannerBiomeIndex = biomeIndex;
@@ -747,12 +768,8 @@ function update(dt) {
     localStorage.setItem("jumpnbean_highscore", String(highScore));
   }
 
-  if (player.y > cameraY + canvas.height + 50 && safeBarTimer <= 0) {
-    if (state !== "lose") {
-      state = "lose";
-      playLoseSound();
-      openScoreEntry();
-    }
+  if (state === "play" && player.y > cameraY + canvas.height + 50 && safeBarTimer <= 0) {
+    triggerDeath();
   }
 
   if (sparkles.length) {
@@ -776,6 +793,14 @@ function update(dt) {
   }
 
   ensurePlatforms();
+
+  if (state === "dying") {
+    deathSlowTimer -= realDt;
+    if (deathSlowTimer <= 0) {
+      state = "lose";
+      openScoreEntry();
+    }
+  }
 }
 
 function drawBackground() {
@@ -1080,19 +1105,23 @@ function drawPlayer() {
 function drawUI() {
   const biome = currentBiome();
   ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-  ctx.fillRect(6, 6, 150, 58);
+  ctx.fillRect(6, 6, 170, 82);
+  ctx.fillStyle = "#ffe285";
+  ctx.font = "10px 'Courier New', monospace";
+  ctx.fillText(`Score ${score}`, 12, 20);
+  ctx.fillStyle = "#b7f5ff";
+  ctx.fillText(`Levels ${levelsEarned}`, 12, 34);
   ctx.fillStyle = "#f3ead7";
   ctx.font = "8px 'Courier New', monospace";
-  ctx.fillText(`Score ${score}`, 12, 18);
-  ctx.fillText(`High ${highScore}`, 12, 28);
-  ctx.fillText(`${biome.name}`, 12, 38);
+  ctx.fillText(`High ${highScore}`, 12, 48);
+  ctx.fillText(`${biome.name}`, 12, 58);
   if (comboTimer > 0 && wallCombo > 0) {
     ctx.fillStyle = "#ffe285";
-    ctx.fillText(`Wall Combo x${wallCombo}`, 12, 48);
+    ctx.fillText(`Wall Combo x${wallCombo}`, 12, 68);
   }
   if (invincibleTimer > 0) {
     ctx.fillStyle = "#7fffd2";
-    ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 12, 58);
+    ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 12, 78);
   }
 
   if (state === "lose") {
@@ -1371,6 +1400,7 @@ function renderGameToText() {
     cameraY: Math.round(cameraY),
     biome: biome.name,
     score,
+    levels: levelsEarned,
     highScore,
     coinsCollected,
     coinScore,
