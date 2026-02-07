@@ -20,6 +20,15 @@ const BLOOD_STAIN_LIMIT = 28;
 const DEATH_SLOW_DURATION = 2;
 const DEATH_SLOW_FACTOR = 0.4;
 const YOU_DIED_DURATION = 1.4;
+const TIPS = [
+  "Walljump to climb faster.",
+  "Chain walljumps for combo points.",
+  "Stomp enemies for bonus points.",
+  "Ride combo hops to build streaks.",
+  "Grab tokens to boost score.",
+  "Use double-jump after a stomp.",
+  "Safe bars protect you after biome shifts.",
+];
 
 const keys = { left: false, right: false };
 let jumpQueued = false;
@@ -128,6 +137,8 @@ let levelsEarned = 1;
 let deathSlowTimer = 0;
 let youDiedTimer = 0;
 let deathFocus = { x: 0, y: 0 };
+let tipIndex = 0;
+let currentTip = TIPS[0];
 
 let audioCtx = null;
 let musicOn = false;
@@ -387,6 +398,8 @@ function triggerDeath() {
   state = "dying";
   deathSlowTimer = DEATH_SLOW_DURATION;
   deathFocus = { x: player.x + player.w / 2, y: player.y + player.h / 2 };
+  currentTip = TIPS[tipIndex % TIPS.length];
+  tipIndex += 1;
   playLoseSound();
 }
 
@@ -547,6 +560,8 @@ function resetGame() {
   levelsEarned = 1;
   deathSlowTimer = 0;
   youDiedTimer = 0;
+  tipIndex = 0;
+  currentTip = TIPS[0];
   closeScoreEntry();
 
   const baseY = canvas.height - 20;
@@ -1215,6 +1230,9 @@ function drawUI() {
     ctx.font = "24px 'Courier New', monospace";
     ctx.textAlign = "center";
     ctx.fillText("YOU DIED", canvas.width / 2, canvas.height / 2);
+    ctx.fillStyle = "#ffe285";
+    ctx.font = "10px 'Courier New', monospace";
+    ctx.fillText(`💡 ${currentTip}`, canvas.width / 2, canvas.height / 2 + 18);
     ctx.textAlign = "left";
   }
 }
