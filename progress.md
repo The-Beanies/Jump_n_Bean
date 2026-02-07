@@ -29,3 +29,4 @@ Original prompt: Create a small classic game with minimal scope. Its Beany a cof
 - 2026-02-06: Ran extended Playwright action burst (longer steps). Captured new shot-0.png + state-0.json (time 1.27s). Only console error remains the expected file:// /api/scores fetch block.
 - 2026-02-07: Added leaderboard seed entry on empty DB, pagination support (offset/total), and UI loading/error + pager controls. Playwright check ran; only expected file:// /api/scores fetch error.
 - 2026-02-07: Re-ran Playwright after pagination offset rollback tweak; expected file:// /api/scores fetch error only.
+- 2026-02-07: Added mobile touch controls (left/right/jump) with pointer handling and mobile UI styling.

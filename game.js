@@ -133,6 +133,9 @@ const scorePrev = document.getElementById("score-prev");
 const scoreNext = document.getElementById("score-next");
 const scorePage = document.getElementById("score-page");
 const scoreRestart = document.getElementById("score-restart");
+const touchLeft = document.getElementById("touch-left");
+const touchRight = document.getElementById("touch-right");
+const touchJump = document.getElementById("touch-jump");
 let scoreSaved = false;
 let lastName = localStorage.getItem(LAST_NAME_KEY) || "";
 let leaderboardOffset = 0;
@@ -1155,6 +1158,61 @@ if (musicButton) {
     musicButton.blur();
   });
 }
+
+function bindHoldButton(button, onDown, onUp) {
+  if (!button) return;
+  button.addEventListener(
+    "pointerdown",
+    (event) => {
+      event.preventDefault();
+      button.setPointerCapture?.(event.pointerId);
+      onDown();
+    },
+    { passive: false }
+  );
+  const end = (event) => {
+    event.preventDefault();
+    button.releasePointerCapture?.(event.pointerId);
+    onUp();
+  };
+  button.addEventListener("pointerup", end, { passive: false });
+  button.addEventListener("pointercancel", end, { passive: false });
+  button.addEventListener("pointerleave", end, { passive: false });
+}
+
+bindHoldButton(
+  touchLeft,
+  () => {
+    ensureAudio();
+    keys.left = true;
+  },
+  () => {
+    keys.left = false;
+  }
+);
+
+bindHoldButton(
+  touchRight,
+  () => {
+    ensureAudio();
+    keys.right = true;
+  },
+  () => {
+    keys.right = false;
+  }
+);
+
+bindHoldButton(
+  touchJump,
+  () => {
+    ensureAudio();
+    if (!jumpHeld) jumpQueued = true;
+    jumpHeld = true;
+  },
+  () => {
+    jumpHeld = false;
+  }
+);
 
 if (scoreSave) {
   scoreSave.addEventListener("click", () => {

@@ -193,8 +193,54 @@ h1 {
   background: #101319;
   image-rendering: pixelated;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  touch-action: none;
 }
 
 #music-audio {
   display: none;
+}
+
+.touch-controls {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-top: 14px;
+  user-select: none;
+}
+
+.touch-pad {
+  display: flex;
+  gap: 12px;
+}
+
+.touch-btn {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  padding: 10px 14px;
+  min-width: 52px;
+  min-height: 52px;
+  border: 2px solid #c6a86b;
+  background: #2a1c12;
+  color: #f3ead7;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  touch-action: manipulation;
+}
+
+.touch-btn.jump {
+  min-width: 92px;
+  font-weight: bold;
+}
+
+.touch-btn:active {
+  transform: translateY(1px);
+  background: #3a2617;
+}
+
+@media (pointer: coarse) {
+  .touch-controls {
+    display: flex;
+  }
 }
