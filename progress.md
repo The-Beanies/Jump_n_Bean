@@ -33,3 +33,5 @@ Original prompt: Create a small classic game with minimal scope. Its Beany a cof
 - 2026-02-07: Added blood particles and blood stains on enemy stomps.
 - 2026-02-07: Added level tracking (HUD + score modal), death slow-mo before leaderboard, and larger highlighted score/leaderboard UI. Playwright check ran; only expected file:// /api/scores fetch error.
 - 2026-02-07: Added levels to leaderboard entries, Dark Souls-style "YOU DIED" overlay after slow-mo, larger mobile buttons, and compact HUD on small screens.
+- 2026-02-07: Enlarged mobile touch buttons without text, removed HUD box on mobile, added combo popups, and boosted combo point feedback.
+- 2026-02-07: Fixed leaderboard numbering with ordered list start, highlighted latest DB entry, shrunk name input, shortened slow-mo with zoom on death, and tuned combo rewards/popup.

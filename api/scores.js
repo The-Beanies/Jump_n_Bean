@@ -69,8 +69,11 @@ module.exports = async function handler(req, res) {
       const countResult = await sql`SELECT COUNT(*)::int AS total FROM scores;`;
       const total = countResult.rows[0]?.total || 0;
       const { rows } = await sql`
-        SELECT name, score, levels
-        FROM scores
+        WITH latest AS (
+          SELECT id FROM scores ORDER BY created_at DESC, id DESC LIMIT 1
+        )
+        SELECT name, score, levels, (scores.id = latest.id) AS is_latest
+        FROM scores, latest
         ORDER BY score DESC, created_at ASC
         LIMIT ${limit} OFFSET ${offset};
       `;

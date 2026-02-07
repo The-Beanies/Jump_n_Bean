@@ -15,10 +15,10 @@ const STOMP_BONUS = 140;
 const POWERUP_DURATION = 10;
 const POWER_BONUS_RATE = 120;
 const SLIDE_WINDOW = 0.28;
-const COMBO_HOP_POINTS = 60;
+const COMBO_HOP_POINTS = 90;
 const BLOOD_STAIN_LIMIT = 28;
-const DEATH_SLOW_DURATION = 3;
-const DEATH_SLOW_FACTOR = 0.35;
+const DEATH_SLOW_DURATION = 2;
+const DEATH_SLOW_FACTOR = 0.4;
 const YOU_DIED_DURATION = 1.4;
 
 const keys = { left: false, right: false };
@@ -113,6 +113,7 @@ let slideWindow = 0;
 let sparkles = [];
 let bloodParticles = [];
 let bloodStains = [];
+let comboPopups = [];
 let paceLevel = 0;
 let lastPlateauHeight = 0;
 let spinTime = 0;
@@ -126,6 +127,7 @@ let safeBarTimer = 0;
 let levelsEarned = 1;
 let deathSlowTimer = 0;
 let youDiedTimer = 0;
+let deathFocus = { x: 0, y: 0 };
 
 let audioCtx = null;
 let musicOn = false;
@@ -222,17 +224,21 @@ function updateLeaderboardControls() {
 function renderScoreList() {
   if (!scoreList) return;
   scoreList.innerHTML = "";
+  scoreList.classList.remove("empty");
   const list = highScores.length ? highScores : [];
   if (!list.length) {
     const li = document.createElement("li");
     li.textContent = leaderboardLoading ? "Loading..." : "No scores yet";
+    scoreList.classList.add("empty");
+    scoreList.removeAttribute("start");
     scoreList.appendChild(li);
   } else {
+    scoreList.start = leaderboardOffset + 1;
     list.forEach((entry, index) => {
       const li = document.createElement("li");
-      const rank = leaderboardOffset + index + 1;
       const entryLevels = Number.isFinite(entry.levels) ? entry.levels : 1;
-      li.textContent = `${rank}. ${entry.name} — ${entry.score} · Lv ${entryLevels}`;
+      li.textContent = `${entry.name} — ${entry.score} · Lv ${entryLevels}`;
+      if (entry.is_latest) li.classList.add("latest");
       scoreList.appendChild(li);
     });
   }
@@ -268,6 +274,7 @@ async function fetchLeaderboard(offset = leaderboardOffset) {
         name: sanitizeName(entry.name),
         score: entry.score,
         levels: Number.isFinite(entry.levels) ? Math.max(1, Math.floor(entry.levels)) : 1,
+        is_latest: Boolean(entry.is_latest),
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, LEADERBOARD_LIMIT);
@@ -379,6 +386,7 @@ function triggerDeath() {
   if (state === "lose" || state === "dying") return;
   state = "dying";
   deathSlowTimer = DEATH_SLOW_DURATION;
+  deathFocus = { x: player.x + player.w / 2, y: player.y + player.h / 2 };
   playLoseSound();
 }
 
@@ -456,6 +464,17 @@ function spawnBlood(x, y) {
   }
 }
 
+function spawnComboPopup(text, x, y, color = "#ffe285") {
+  comboPopups.push({
+    text,
+    x,
+    y,
+    vy: -40,
+    life: 0.65,
+    color,
+  });
+}
+
 function spawnPlatformAbove() {
   const gap = rand(22, 36);
   nextPlatformY -= gap;
@@ -514,6 +533,7 @@ function resetGame() {
   sparkles = [];
   bloodParticles = [];
   bloodStains = [];
+  comboPopups = [];
   paceLevel = 0;
   lastPlateauHeight = 0;
   spinTime = 0;
@@ -625,9 +645,11 @@ function update(dt) {
       if (comboHop) {
         wallCombo += 1;
         comboTimer = WALL_COMBO_WINDOW;
-        const hopMultiplier = 1 + wallCombo * 0.2;
-        comboScore += Math.round(COMBO_HOP_POINTS * hopMultiplier);
+      const hopMultiplier = 1 + wallCombo * 0.25;
+        const hopGain = Math.round(COMBO_HOP_POINTS * hopMultiplier);
+        comboScore += hopGain;
         spawnSparkles(player.x + player.w / 2, player.y + player.h / 2);
+        spawnComboPopup(`+${hopGain}`, player.x + player.w / 2, player.y - 6);
       }
       const hopBoost = comboHop ? 1 + Math.min(wallCombo * 0.05, 0.3) : 1;
       player.vy = -(JUMP * hopBoost * powerMultiplier + speedBoost);
@@ -640,7 +662,8 @@ function update(dt) {
       lastWallJumpTime = elapsedTime;
       comboTimer = WALL_COMBO_WINDOW;
       const comboMultiplier = 1 + wallCombo * 0.25;
-      comboScore += Math.round(50 * wallCombo * comboMultiplier);
+      const comboGain = Math.round(80 * wallCombo * comboMultiplier);
+      comboScore += comboGain;
 
       const comboBoost = 1 + Math.min(wallCombo * 0.08, 0.4);
       player.vy = -(JUMP * 0.95 * comboBoost * powerMultiplier);
@@ -650,6 +673,7 @@ function update(dt) {
       spinDir = wallSide === -1 ? 1 : -1;
       wallJumpLockSide = wallSide;
       doubleJumpAvailable = true;
+      spawnComboPopup(`+${comboGain}`, player.x + player.w / 2, player.y - 8);
       playWallSound();
     } else if (doubleJumpAvailable) {
       player.vy = -(JUMP * 0.9 * powerMultiplier);
@@ -807,6 +831,14 @@ function update(dt) {
       drop.life -= dt;
     });
     bloodParticles = bloodParticles.filter((drop) => drop.life > 0);
+  }
+
+  if (comboPopups.length) {
+    comboPopups.forEach((popup) => {
+      popup.y += popup.vy * dt;
+      popup.life -= dt;
+    });
+    comboPopups = comboPopups.filter((popup) => popup.life > 0);
   }
 
   ensurePlatforms();
@@ -1064,6 +1096,23 @@ function drawBloodParticles() {
   ctx.restore();
 }
 
+function drawComboPopups() {
+  if (!comboPopups.length) return;
+  ctx.save();
+  comboPopups.forEach((popup) => {
+    if (popup.y > cameraY + canvas.height + 20 || popup.y < cameraY - 40) return;
+    const alpha = Math.max(0, Math.min(1, popup.life / 0.65));
+    const scale = 1 + (1 - alpha) * 0.2;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = popup.color;
+    ctx.font = `${Math.round(14 * scale)}px 'Courier New', monospace`;
+    ctx.textAlign = "center";
+    ctx.fillText(popup.text, popup.x, popup.y);
+  });
+  ctx.textAlign = "left";
+  ctx.restore();
+}
+
 function drawPlayer() {
   const moving = Math.abs(player.vx) > 5;
   const inAir = !player.onGround;
@@ -1122,9 +1171,10 @@ function drawPlayer() {
 function drawUI() {
   const biome = currentBiome();
   const compactHud = window.innerWidth < 520 || window.innerHeight < 420;
-  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+  ctx.shadowBlur = 4;
   if (compactHud) {
-    ctx.fillRect(6, 6, 120, invincibleTimer > 0 ? 56 : 46);
     ctx.fillStyle = "#ffe285";
     ctx.font = "8px 'Courier New', monospace";
     ctx.fillText(`Score ${score}`, 10, 16);
@@ -1138,7 +1188,6 @@ function drawUI() {
       ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 10, 50);
     }
   } else {
-    ctx.fillRect(6, 6, 170, 82);
     ctx.fillStyle = "#ffe285";
     ctx.font = "10px 'Courier New', monospace";
     ctx.fillText(`Score ${score}`, 12, 20);
@@ -1157,6 +1206,7 @@ function drawUI() {
       ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 12, 78);
     }
   }
+  ctx.restore();
 
   if (state === "dead") {
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
@@ -1176,6 +1226,19 @@ function render() {
   const biome = currentBiome();
 
   ctx.save();
+  const zooming = state === "dying" || state === "dead";
+  let zoom = 1;
+  if (zooming) {
+    const progress = 1 - Math.max(0, deathSlowTimer) / DEATH_SLOW_DURATION;
+    zoom = 1 + Math.min(0.12, progress * 0.12);
+  }
+  const focusX = deathFocus.x;
+  const focusY = deathFocus.y - cameraY;
+  if (zooming && zoom !== 1) {
+    ctx.translate(focusX, focusY);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-focusX, -focusY);
+  }
   ctx.translate(0, -cameraY);
   drawPlatforms(biome);
   drawBloodStains();
@@ -1184,6 +1247,7 @@ function render() {
   drawEnemies();
   drawBloodParticles();
   drawSparkles();
+  drawComboPopups();
   drawPlayer();
   ctx.restore();
 
@@ -1350,7 +1414,10 @@ if (scoreSave) {
     if (!scoreName) return;
     const name = normalizeName(scoreName.value.trim());
     if (name.length !== 3) return;
-    highScores = [...highScores, { name, score, levels: levelsEarned }]
+    highScores = [
+      ...highScores.map((entry) => ({ ...entry, is_latest: false })),
+      { name, score, levels: levelsEarned, is_latest: true },
+    ]
       .sort((a, b) => b.score - a.score)
       .slice(0, LEADERBOARD_LIMIT);
     saveHighScores();
