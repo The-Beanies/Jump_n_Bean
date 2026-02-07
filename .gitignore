@@ -4,3 +4,5 @@ output/
 node_modules/
 .vercel/
 .env
+.vercel
+.env*.local
