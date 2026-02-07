@@ -20,6 +20,8 @@ const BLOOD_STAIN_LIMIT = 28;
 const DEATH_SLOW_DURATION = 2;
 const DEATH_SLOW_FACTOR = 0.4;
 const YOU_DIED_DURATION = 1.4;
+const DEATH_SPLASH_DURATION = 1.1;
+const DEATH_SPLASH_COUNT = 28;
 const TIPS = [
   "Walljump to climb faster.",
   "Chain walljumps for combo points.",
@@ -28,6 +30,12 @@ const TIPS = [
   "Grab tokens to boost score.",
   "Use double-jump after a stomp.",
   "Safe bars protect you after biome shifts.",
+  "Walljump, land, hop fast to extend combos.",
+  "Higher speed = higher jumps.",
+  "Stay near the center to avoid edge traps.",
+  "Combos boost coin value too.",
+  "Use short taps for precise landings.",
+  "Build streaks for big score jumps.",
 ];
 
 const keys = { left: false, right: false };
@@ -139,6 +147,9 @@ let youDiedTimer = 0;
 let deathFocus = { x: 0, y: 0 };
 let tipIndex = 0;
 let currentTip = TIPS[0];
+let lastTipIndex = -1;
+let deathSplashTimer = 0;
+let deathSplashDrops = [];
 
 let audioCtx = null;
 let musicOn = false;
@@ -401,8 +412,9 @@ function triggerDeath() {
   state = "dying";
   deathSlowTimer = DEATH_SLOW_DURATION;
   deathFocus = { x: player.x + player.w / 2, y: player.y + player.h / 2 };
-  currentTip = TIPS[tipIndex % TIPS.length];
+  currentTip = pickRandomTip();
   tipIndex += 1;
+  spawnDeathSplash();
   playLoseSound();
 }
 
@@ -491,6 +503,29 @@ function spawnComboPopup(text, x, y, color = "#ffe285") {
   });
 }
 
+function pickRandomTip() {
+  if (!TIPS.length) return "";
+  let index = Math.floor(Math.random() * TIPS.length);
+  if (TIPS.length > 1 && index === lastTipIndex) {
+    index = (index + 1) % TIPS.length;
+  }
+  lastTipIndex = index;
+  return TIPS[index];
+}
+
+function spawnDeathSplash() {
+  deathSplashTimer = DEATH_SPLASH_DURATION;
+  deathSplashDrops = [];
+  for (let i = 0; i < DEATH_SPLASH_COUNT; i += 1) {
+    deathSplashDrops.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: rand(10, 26),
+      alpha: 0.25 + Math.random() * 0.35,
+    });
+  }
+}
+
 function spawnPlatformAbove() {
   const gap = rand(22, 36);
   nextPlatformY -= gap;
@@ -565,6 +600,9 @@ function resetGame() {
   youDiedTimer = 0;
   tipIndex = 0;
   currentTip = TIPS[0];
+  lastTipIndex = -1;
+  deathSplashTimer = 0;
+  deathSplashDrops = [];
   closeScoreEntry();
 
   const baseY = canvas.height - 20;
@@ -604,6 +642,9 @@ function overlaps(a, b) {
 
 function update(dt) {
   const realDt = dt;
+  if (deathSplashTimer > 0) {
+    deathSplashTimer = Math.max(0, deathSplashTimer - realDt);
+  }
   if (state === "dead") {
     youDiedTimer -= realDt;
     if (youDiedTimer <= 0) {
@@ -1131,6 +1172,24 @@ function drawComboPopups() {
   ctx.restore();
 }
 
+function drawDeathSplash() {
+  if (deathSplashTimer <= 0) return;
+  const t = deathSplashTimer / DEATH_SPLASH_DURATION;
+  const alpha = Math.min(1, t * 1.1);
+  ctx.save();
+  ctx.globalAlpha = 0.6 * alpha;
+  ctx.fillStyle = "#5d0b12";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.globalAlpha = 0.85 * alpha;
+  ctx.fillStyle = "#a3161f";
+  deathSplashDrops.forEach((drop) => {
+    ctx.beginPath();
+    ctx.arc(drop.x, drop.y, drop.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
 function drawPlayer() {
   const moving = Math.abs(player.vx) > 5;
   const inAir = !player.onGround;
@@ -1273,6 +1332,7 @@ function render() {
   ctx.restore();
 
   drawPowerFlash();
+  drawDeathSplash();
   drawUI();
 }
 
