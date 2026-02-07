@@ -3,6 +3,7 @@ const { sql } = require("@vercel/postgres");
 const MAX_LIMIT = 25;
 const SEED_NAME = "BEA";
 const SEED_SCORE = 500;
+const SEED_LEVELS = 1;
 
 function normalizeName(value) {
   return String(value || "")
@@ -36,13 +37,15 @@ async function ensureTable() {
       id SERIAL PRIMARY KEY,
       name VARCHAR(3) NOT NULL,
       score INTEGER NOT NULL,
+      levels INTEGER NOT NULL DEFAULT 1,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `;
   await sql`CREATE INDEX IF NOT EXISTS scores_score_idx ON scores (score DESC);`;
+  await sql`ALTER TABLE scores ADD COLUMN IF NOT EXISTS levels INTEGER NOT NULL DEFAULT 1;`;
   await sql`
-    INSERT INTO scores (name, score)
-    SELECT ${SEED_NAME}, ${SEED_SCORE}
+    INSERT INTO scores (name, score, levels)
+    SELECT ${SEED_NAME}, ${SEED_SCORE}, ${SEED_LEVELS}
     WHERE NOT EXISTS (SELECT 1 FROM scores);
   `;
 }
@@ -66,7 +69,7 @@ module.exports = async function handler(req, res) {
       const countResult = await sql`SELECT COUNT(*)::int AS total FROM scores;`;
       const total = countResult.rows[0]?.total || 0;
       const { rows } = await sql`
-        SELECT name, score
+        SELECT name, score, levels
         FROM scores
         ORDER BY score DESC, created_at ASC
         LIMIT ${limit} OFFSET ${offset};
@@ -91,13 +94,18 @@ module.exports = async function handler(req, res) {
     }
     const name = normalizeName(body.name);
     const score = Number(body.score);
+    const levels = Number(body.levels);
+    const safeLevels = Number.isFinite(levels) && levels > 0 ? Math.floor(levels) : 1;
     if (name.length !== 3 || !Number.isFinite(score) || score < 0) {
       res.statusCode = 400;
       res.end(JSON.stringify({ error: "invalid_payload" }));
       return;
     }
     try {
-      await sql`INSERT INTO scores (name, score) VALUES (${name}, ${Math.floor(score)})`;
+      await sql`
+        INSERT INTO scores (name, score, levels)
+        VALUES (${name}, ${Math.floor(score)}, ${safeLevels})
+      `;
       res.statusCode = 200;
       res.end(JSON.stringify({ ok: true }));
     } catch (err) {

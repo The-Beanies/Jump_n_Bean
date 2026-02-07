@@ -19,6 +19,7 @@ const COMBO_HOP_POINTS = 60;
 const BLOOD_STAIN_LIMIT = 28;
 const DEATH_SLOW_DURATION = 3;
 const DEATH_SLOW_FACTOR = 0.35;
+const YOU_DIED_DURATION = 1.4;
 
 const keys = { left: false, right: false };
 let jumpQueued = false;
@@ -124,6 +125,7 @@ let doubleJumpAvailable = false;
 let safeBarTimer = 0;
 let levelsEarned = 1;
 let deathSlowTimer = 0;
+let youDiedTimer = 0;
 
 let audioCtx = null;
 let musicOn = false;
@@ -185,13 +187,14 @@ function loadHighScores() {
   }
   const legacy = Number(localStorage.getItem("jumpnbean_highscore") || 0);
   if (legacy && !list.some((entry) => entry.score === legacy)) {
-    list.push({ name: "BEA", score: legacy });
+    list.push({ name: "BEA", score: legacy, levels: 1 });
   }
   return list
     .filter((entry) => entry && typeof entry.score === "number")
     .map((entry) => ({
       name: sanitizeName(entry.name),
       score: entry.score,
+      levels: Number.isFinite(entry.levels) ? Math.max(1, Math.floor(entry.levels)) : 1,
     }))
     .sort((a, b) => b.score - a.score)
     .slice(0, LEADERBOARD_LIMIT);
@@ -228,7 +231,8 @@ function renderScoreList() {
     list.forEach((entry, index) => {
       const li = document.createElement("li");
       const rank = leaderboardOffset + index + 1;
-      li.textContent = `${rank}. ${entry.name} — ${entry.score}`;
+      const entryLevels = Number.isFinite(entry.levels) ? entry.levels : 1;
+      li.textContent = `${rank}. ${entry.name} — ${entry.score} · Lv ${entryLevels}`;
       scoreList.appendChild(li);
     });
   }
@@ -260,7 +264,11 @@ async function fetchLeaderboard(offset = leaderboardOffset) {
     if (!Array.isArray(data.scores)) throw new Error("leaderboard_invalid");
     highScores = data.scores
       .filter((entry) => entry && typeof entry.score === "number")
-      .map((entry) => ({ name: sanitizeName(entry.name), score: entry.score }))
+      .map((entry) => ({
+        name: sanitizeName(entry.name),
+        score: entry.score,
+        levels: Number.isFinite(entry.levels) ? Math.max(1, Math.floor(entry.levels)) : 1,
+      }))
       .sort((a, b) => b.score - a.score)
       .slice(0, LEADERBOARD_LIMIT);
     if (Number.isFinite(data.total)) {
@@ -283,7 +291,7 @@ async function submitScore(name, scoreValue) {
     const res = await fetch("/api/scores", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, score: Math.floor(scoreValue) }),
+      body: JSON.stringify({ name, score: Math.floor(scoreValue), levels: levelsEarned }),
     });
     return res.ok;
   } catch {
@@ -518,6 +526,7 @@ function resetGame() {
   safeBarTimer = 0;
   levelsEarned = 1;
   deathSlowTimer = 0;
+  youDiedTimer = 0;
   closeScoreEntry();
 
   const baseY = canvas.height - 20;
@@ -556,8 +565,16 @@ function overlaps(a, b) {
 }
 
 function update(dt) {
-  if (state !== "play" && state !== "dying") return;
   const realDt = dt;
+  if (state === "dead") {
+    youDiedTimer -= realDt;
+    if (youDiedTimer <= 0) {
+      state = "lose";
+      openScoreEntry();
+    }
+    return;
+  }
+  if (state !== "play" && state !== "dying") return;
   if (state === "dying") {
     dt *= DEATH_SLOW_FACTOR;
   }
@@ -797,8 +814,8 @@ function update(dt) {
   if (state === "dying") {
     deathSlowTimer -= realDt;
     if (deathSlowTimer <= 0) {
-      state = "lose";
-      openScoreEntry();
+      state = "dead";
+      youDiedTimer = YOU_DIED_DURATION;
     }
   }
 }
@@ -1104,34 +1121,51 @@ function drawPlayer() {
 
 function drawUI() {
   const biome = currentBiome();
+  const compactHud = window.innerWidth < 520 || window.innerHeight < 420;
   ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-  ctx.fillRect(6, 6, 170, 82);
-  ctx.fillStyle = "#ffe285";
-  ctx.font = "10px 'Courier New', monospace";
-  ctx.fillText(`Score ${score}`, 12, 20);
-  ctx.fillStyle = "#b7f5ff";
-  ctx.fillText(`Levels ${levelsEarned}`, 12, 34);
-  ctx.fillStyle = "#f3ead7";
-  ctx.font = "8px 'Courier New', monospace";
-  ctx.fillText(`High ${highScore}`, 12, 48);
-  ctx.fillText(`${biome.name}`, 12, 58);
-  if (comboTimer > 0 && wallCombo > 0) {
+  if (compactHud) {
+    ctx.fillRect(6, 6, 120, invincibleTimer > 0 ? 56 : 46);
     ctx.fillStyle = "#ffe285";
-    ctx.fillText(`Wall Combo x${wallCombo}`, 12, 68);
-  }
-  if (invincibleTimer > 0) {
-    ctx.fillStyle = "#7fffd2";
-    ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 12, 78);
+    ctx.font = "8px 'Courier New', monospace";
+    ctx.fillText(`Score ${score}`, 10, 16);
+    ctx.fillStyle = "#b7f5ff";
+    ctx.fillText(`Lv ${levelsEarned}`, 10, 28);
+    ctx.fillStyle = "#f3ead7";
+    ctx.font = "7px 'Courier New', monospace";
+    ctx.fillText(`High ${highScore}`, 10, 38);
+    if (invincibleTimer > 0) {
+      ctx.fillStyle = "#7fffd2";
+      ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 10, 50);
+    }
+  } else {
+    ctx.fillRect(6, 6, 170, 82);
+    ctx.fillStyle = "#ffe285";
+    ctx.font = "10px 'Courier New', monospace";
+    ctx.fillText(`Score ${score}`, 12, 20);
+    ctx.fillStyle = "#b7f5ff";
+    ctx.fillText(`Levels ${levelsEarned}`, 12, 34);
+    ctx.fillStyle = "#f3ead7";
+    ctx.font = "8px 'Courier New', monospace";
+    ctx.fillText(`High ${highScore}`, 12, 48);
+    ctx.fillText(`${biome.name}`, 12, 58);
+    if (comboTimer > 0 && wallCombo > 0) {
+      ctx.fillStyle = "#ffe285";
+      ctx.fillText(`Wall Combo x${wallCombo}`, 12, 68);
+    }
+    if (invincibleTimer > 0) {
+      ctx.fillStyle = "#7fffd2";
+      ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 12, 78);
+    }
   }
 
-  if (state === "lose") {
+  if (state === "dead") {
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#f3ead7";
-    ctx.font = "12px 'Courier New', monospace";
-    ctx.fillText("Beany fell below.", 60, 88);
-    ctx.font = "8px 'Courier New', monospace";
-    ctx.fillText("Refresh to try again.", 70, 104);
+    ctx.fillStyle = "#b80f1a";
+    ctx.font = "24px 'Courier New', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("YOU DIED", canvas.width / 2, canvas.height / 2);
+    ctx.textAlign = "left";
   }
 }
 
@@ -1316,7 +1350,7 @@ if (scoreSave) {
     if (!scoreName) return;
     const name = normalizeName(scoreName.value.trim());
     if (name.length !== 3) return;
-    highScores = [...highScores, { name, score }]
+    highScores = [...highScores, { name, score, levels: levelsEarned }]
       .sort((a, b) => b.score - a.score)
       .slice(0, LEADERBOARD_LIMIT);
     saveHighScores();
