@@ -1,6 +1,8 @@
 const { sql } = require("@vercel/postgres");
 
 const MAX_LIMIT = 25;
+const SEED_NAME = "BEA";
+const SEED_SCORE = 500;
 
 function normalizeName(value) {
   return String(value || "")
@@ -38,6 +40,11 @@ async function ensureTable() {
     );
   `;
   await sql`CREATE INDEX IF NOT EXISTS scores_score_idx ON scores (score DESC);`;
+  await sql`
+    INSERT INTO scores (name, score)
+    SELECT ${SEED_NAME}, ${SEED_SCORE}
+    WHERE NOT EXISTS (SELECT 1 FROM scores);
+  `;
 }
 
 module.exports = async function handler(req, res) {
@@ -54,15 +61,18 @@ module.exports = async function handler(req, res) {
 
   if (req.method === "GET") {
     const limit = Math.max(1, Math.min(MAX_LIMIT, Number(req.query?.limit || MAX_LIMIT)));
+    const offset = Math.max(0, Number(req.query?.offset || 0));
     try {
+      const countResult = await sql`SELECT COUNT(*)::int AS total FROM scores;`;
+      const total = countResult.rows[0]?.total || 0;
       const { rows } = await sql`
         SELECT name, score
         FROM scores
         ORDER BY score DESC, created_at ASC
-        LIMIT ${limit};
+        LIMIT ${limit} OFFSET ${offset};
       `;
       res.statusCode = 200;
-      res.end(JSON.stringify({ scores: rows }));
+      res.end(JSON.stringify({ scores: rows, total, limit, offset }));
     } catch (err) {
       res.statusCode = 500;
       res.end(JSON.stringify({ error: "db_read_failed" }));

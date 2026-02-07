@@ -151,6 +151,33 @@ h1 {
   color: #f3ead7;
 }
 
+.score-meta {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.score-status {
+  margin: 0;
+  font-size: 11px;
+  color: #c6b592;
+  min-height: 14px;
+}
+
+.score-pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-page {
+  font-size: 11px;
+  color: #d7c8ac;
+  min-width: 36px;
+  text-align: center;
+}
+
 .score-note {
   margin: 10px 0 0;
   font-size: 11px;

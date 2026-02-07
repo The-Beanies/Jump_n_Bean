@@ -27,3 +27,5 @@ Original prompt: Create a small classic game with minimal scope. Its Beany a cof
 - 2026-02-06: Playwright check ran (using temp browsers path). Captured shot-0.png + state-0.json. Console error in file:// mode: fetch to /api/scores not supported (expected for local file scheme).
 - 2026-02-06: Ran longer Playwright action burst. Captured updated shot-0.png + state-0.json (score 94, time 1.55s). Same expected file:// leaderboard fetch error; no new console errors.
 - 2026-02-06: Ran extended Playwright action burst (longer steps). Captured new shot-0.png + state-0.json (time 1.27s). Only console error remains the expected file:// /api/scores fetch block.
+- 2026-02-07: Added leaderboard seed entry on empty DB, pagination support (offset/total), and UI loading/error + pager controls. Playwright check ran; only expected file:// /api/scores fetch error.
+- 2026-02-07: Re-ran Playwright after pagination offset rollback tweak; expected file:// /api/scores fetch error only.

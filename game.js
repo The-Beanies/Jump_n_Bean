@@ -128,9 +128,17 @@ const scoreValue = document.getElementById("score-value");
 const scoreName = document.getElementById("score-name");
 const scoreSave = document.getElementById("score-save");
 const scoreList = document.getElementById("score-list");
+const scoreStatus = document.getElementById("score-status");
+const scorePrev = document.getElementById("score-prev");
+const scoreNext = document.getElementById("score-next");
+const scorePage = document.getElementById("score-page");
 const scoreRestart = document.getElementById("score-restart");
 let scoreSaved = false;
 let lastName = localStorage.getItem(LAST_NAME_KEY) || "";
+let leaderboardOffset = 0;
+let leaderboardTotal = highScores.length;
+let leaderboardLoading = false;
+let leaderboardError = "";
 
 function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -180,41 +188,82 @@ function loadHighScores() {
 
 function saveHighScores() {
   highScores = highScores.slice(0, LEADERBOARD_LIMIT);
+  leaderboardTotal = Math.max(leaderboardTotal, highScores.length);
   localStorage.setItem(SCORE_STORAGE_KEY, JSON.stringify(highScores));
   highScore = highScores[0]?.score || 0;
   localStorage.setItem("jumpnbean_highscore", String(highScore));
   renderScoreList();
 }
 
+function updateLeaderboardControls() {
+  if (!scorePrev || !scoreNext || !scorePage) return;
+  const total = Math.max(leaderboardTotal, highScores.length);
+  const totalPages = Math.max(1, Math.ceil(total / LEADERBOARD_LIMIT));
+  const currentPage = Math.min(totalPages - 1, Math.floor(leaderboardOffset / LEADERBOARD_LIMIT));
+  scorePrev.disabled = leaderboardLoading || currentPage <= 0;
+  scoreNext.disabled = leaderboardLoading || currentPage >= totalPages - 1;
+  scorePage.textContent = `${currentPage + 1}/${totalPages}`;
+}
+
 function renderScoreList() {
   if (!scoreList) return;
   scoreList.innerHTML = "";
-  const list = highScores.length ? highScores : [{ name: "No scores yet", score: 0 }];
-  list.forEach((entry, index) => {
+  const list = highScores.length ? highScores : [];
+  if (!list.length) {
     const li = document.createElement("li");
-    if (entry.score === 0 && entry.name === "No scores yet") {
-      li.textContent = entry.name;
-    } else {
-      li.textContent = `${index + 1}. ${entry.name} — ${entry.score}`;
-    }
+    li.textContent = leaderboardLoading ? "Loading..." : "No scores yet";
     scoreList.appendChild(li);
-  });
+  } else {
+    list.forEach((entry, index) => {
+      const li = document.createElement("li");
+      const rank = leaderboardOffset + index + 1;
+      li.textContent = `${rank}. ${entry.name} — ${entry.score}`;
+      scoreList.appendChild(li);
+    });
+  }
+  if (scoreStatus) {
+    if (leaderboardLoading) {
+      scoreStatus.textContent = "Loading leaderboard...";
+    } else if (leaderboardError) {
+      scoreStatus.textContent = leaderboardError;
+    } else {
+      scoreStatus.textContent = "";
+    }
+  }
+  updateLeaderboardControls();
 }
 
-async function fetchLeaderboard() {
+async function fetchLeaderboard(offset = leaderboardOffset) {
+  const previousOffset = leaderboardOffset;
   try {
-    const res = await fetch(`/api/scores?limit=${LEADERBOARD_LIMIT}`, { cache: "no-store" });
-    if (!res.ok) return;
+    leaderboardLoading = true;
+    leaderboardError = "";
+    leaderboardOffset = Math.max(0, offset);
+    renderScoreList();
+    const res = await fetch(
+      `/api/scores?limit=${LEADERBOARD_LIMIT}&offset=${leaderboardOffset}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) throw new Error("leaderboard_fetch_failed");
     const data = await res.json();
-    if (!Array.isArray(data.scores)) return;
+    if (!Array.isArray(data.scores)) throw new Error("leaderboard_invalid");
     highScores = data.scores
       .filter((entry) => entry && typeof entry.score === "number")
       .map((entry) => ({ name: sanitizeName(entry.name), score: entry.score }))
       .sort((a, b) => b.score - a.score)
       .slice(0, LEADERBOARD_LIMIT);
+    if (Number.isFinite(data.total)) {
+      leaderboardTotal = Math.max(0, Number(data.total));
+    } else {
+      leaderboardTotal = Math.max(leaderboardTotal, highScores.length);
+    }
     saveHighScores();
   } catch {
-    // keep local fallback
+    leaderboardOffset = previousOffset;
+    leaderboardError = "Leaderboard offline — local scores shown";
+  } finally {
+    leaderboardLoading = false;
+    renderScoreList();
   }
 }
 
@@ -235,6 +284,8 @@ function openScoreEntry() {
   if (!scoreEntry) return;
   if (scoreValue) scoreValue.textContent = String(score);
   renderScoreList();
+  leaderboardOffset = 0;
+  fetchLeaderboard(0);
   scoreSaved = false;
   scoreEntry.classList.remove("hidden");
   if (scoreName) {
@@ -1117,7 +1168,10 @@ if (scoreSave) {
     lastName = name;
     localStorage.setItem(LAST_NAME_KEY, lastName);
     submitScore(name, score).then((ok) => {
-      if (ok) fetchLeaderboard();
+      if (ok) {
+        leaderboardOffset = 0;
+        fetchLeaderboard(0);
+      }
     });
     scoreName.disabled = true;
     scoreSave.disabled = true;
@@ -1129,6 +1183,28 @@ if (scoreSave) {
 if (scoreRestart) {
   scoreRestart.addEventListener("click", () => {
     resetGame();
+  });
+}
+
+if (scorePrev) {
+  scorePrev.addEventListener("click", () => {
+    if (leaderboardLoading) return;
+    const nextOffset = Math.max(0, leaderboardOffset - LEADERBOARD_LIMIT);
+    if (nextOffset !== leaderboardOffset) {
+      fetchLeaderboard(nextOffset);
+    }
+  });
+}
+
+if (scoreNext) {
+  scoreNext.addEventListener("click", () => {
+    if (leaderboardLoading) return;
+    const total = Math.max(leaderboardTotal, highScores.length);
+    const totalPages = Math.max(1, Math.ceil(total / LEADERBOARD_LIMIT));
+    const nextPage = Math.floor(leaderboardOffset / LEADERBOARD_LIMIT) + 1;
+    if (nextPage < totalPages) {
+      fetchLeaderboard(nextPage * LEADERBOARD_LIMIT);
+    }
   });
 }
 
@@ -1144,7 +1220,7 @@ if (scoreName) {
 }
 
 renderScoreList();
-fetchLeaderboard();
+fetchLeaderboard(0);
 
 function renderGameToText() {
   const biome = currentBiome();
