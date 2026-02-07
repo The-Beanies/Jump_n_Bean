@@ -16,6 +16,7 @@ const POWERUP_DURATION = 10;
 const POWER_BONUS_RATE = 120;
 const SLIDE_WINDOW = 0.28;
 const COMBO_HOP_POINTS = 60;
+const BLOOD_STAIN_LIMIT = 28;
 
 const keys = { left: false, right: false };
 let jumpQueued = false;
@@ -107,6 +108,8 @@ let comboTimer = 0;
 let comboScore = 0;
 let slideWindow = 0;
 let sparkles = [];
+let bloodParticles = [];
+let bloodStains = [];
 let paceLevel = 0;
 let lastPlateauHeight = 0;
 let spinTime = 0;
@@ -408,6 +411,30 @@ function spawnSparkles(x, y) {
   }
 }
 
+function spawnBlood(x, y) {
+  for (let i = 0; i < 10; i += 1) {
+    bloodParticles.push({
+      x,
+      y,
+      vx: rand(-90, 90),
+      vy: rand(-180, -40),
+      life: 0.55 + Math.random() * 0.3,
+    });
+  }
+  const stainCount = rand(2, 4);
+  for (let i = 0; i < stainCount; i += 1) {
+    bloodStains.push({
+      x: x + rand(-6, 6),
+      y: y + rand(0, 3),
+      r: rand(3, 6),
+      alpha: 0.35 + Math.random() * 0.25,
+    });
+  }
+  if (bloodStains.length > BLOOD_STAIN_LIMIT) {
+    bloodStains.splice(0, bloodStains.length - BLOOD_STAIN_LIMIT);
+  }
+}
+
 function spawnPlatformAbove() {
   const gap = rand(22, 36);
   nextPlatformY -= gap;
@@ -464,6 +491,8 @@ function resetGame() {
   comboScore = 0;
   slideWindow = 0;
   sparkles = [];
+  bloodParticles = [];
+  bloodStains = [];
   paceLevel = 0;
   lastPlateauHeight = 0;
   spinTime = 0;
@@ -676,6 +705,7 @@ function update(dt) {
       enemyScore += ENEMY_POINTS + STOMP_BONUS;
       player.vy = -(JUMP * 0.95 * BOUNCE_BOOST * powerMultiplier);
       doubleJumpAvailable = true;
+      spawnBlood(enemy.x + enemy.w / 2, enemy.y + enemy.h - 2);
       playStompSound();
     } else if (invincibleTimer > 0 || safeBarTimer > 0) {
       enemy.dead = true;
@@ -733,6 +763,16 @@ function update(dt) {
       sparkle.life -= dt;
     });
     sparkles = sparkles.filter((sparkle) => sparkle.life > 0);
+  }
+
+  if (bloodParticles.length) {
+    bloodParticles.forEach((drop) => {
+      drop.x += drop.vx * dt;
+      drop.y += drop.vy * dt;
+      drop.vy += 320 * dt;
+      drop.life -= dt;
+    });
+    bloodParticles = bloodParticles.filter((drop) => drop.life > 0);
   }
 
   ensurePlatforms();
@@ -956,6 +996,32 @@ function drawSparkles() {
   });
 }
 
+function drawBloodStains() {
+  if (!bloodStains.length) return;
+  ctx.save();
+  ctx.fillStyle = "rgba(120, 12, 18, 0.6)";
+  bloodStains.forEach((stain) => {
+    if (stain.y > cameraY + canvas.height + 30 || stain.y + stain.r < cameraY - 30) return;
+    ctx.globalAlpha = stain.alpha;
+    ctx.beginPath();
+    ctx.arc(stain.x, stain.y, stain.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+function drawBloodParticles() {
+  if (!bloodParticles.length) return;
+  ctx.save();
+  ctx.fillStyle = "#a3161f";
+  bloodParticles.forEach((drop) => {
+    if (drop.y > cameraY + canvas.height + 30 || drop.y + 2 < cameraY - 30) return;
+    const size = 2;
+    ctx.fillRect(drop.x - 1, drop.y - 1, size, size);
+  });
+  ctx.restore();
+}
+
 function drawPlayer() {
   const moving = Math.abs(player.vx) > 5;
   const inAir = !player.onGround;
@@ -1049,9 +1115,11 @@ function render() {
   ctx.save();
   ctx.translate(0, -cameraY);
   drawPlatforms(biome);
+  drawBloodStains();
   drawCoins(biome);
   drawPowerups();
   drawEnemies();
+  drawBloodParticles();
   drawSparkles();
   drawPlayer();
   ctx.restore();
