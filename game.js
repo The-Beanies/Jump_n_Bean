@@ -2,7 +2,9 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
+const GAME_VERSION = "v1.9";
 const FIXED_DT = 1 / 60;
+const MAX_SPEED = 150;
 const PLATFORM_HEIGHT = 8;
 const BIOME_STEP = 500;
 const MUSIC_SRC = "Icy Tower v131 - Opening Theme Song High Quality.mp3";
@@ -22,6 +24,15 @@ const DEATH_SLOW_FACTOR = 0.4;
 const YOU_DIED_DURATION = 1.4;
 const DEATH_SPLASH_DURATION = 1.1;
 const DEATH_SPLASH_COUNT = 28;
+const SUPER_JUMP_THRESHOLD = 0.85;
+const SUPER_JUMP_MULT = 1.25;
+const STYLE_WALL_JUMP = 70;
+const STYLE_LONG_JUMP = 120;
+const STYLE_SPEED = 60;
+const STYLE_SUPER_JUMP = 90;
+const STREAK_BASE_POINTS = 30;
+const LONG_JUMP_DISTANCE = 120;
+const SPEED_STYLE_THRESHOLD = 120;
 const TIPS = [
   "Walljump to climb faster.",
   "Chain walljumps for combo points.",
@@ -114,6 +125,8 @@ let coinsCollected = 0;
 let coinScore = 0;
 let enemyScore = 0;
 let powerScore = 0;
+let styleScore = 0;
+let streakScore = 0;
 let startY = 0;
 let nextPlatformY = 0;
 let highScores = loadHighScores();
@@ -150,6 +163,12 @@ let currentTip = TIPS[0];
 let lastTipIndex = -1;
 let deathSplashTimer = 0;
 let deathSplashDrops = [];
+let floorStreak = 0;
+let lastLandingPlatformId = null;
+let platformIdCounter = 1;
+let airStartX = 0;
+let airMaxDistance = 0;
+let airTime = 0;
 
 let audioCtx = null;
 let musicOn = false;
@@ -167,6 +186,7 @@ const scorePrev = document.getElementById("score-prev");
 const scoreNext = document.getElementById("score-next");
 const scorePage = document.getElementById("score-page");
 const scoreRestart = document.getElementById("score-restart");
+const gameVersion = document.getElementById("game-version");
 const touchLeft = document.getElementById("touch-left");
 const touchRight = document.getElementById("touch-right");
 const touchJump = document.getElementById("touch-jump");
@@ -176,6 +196,10 @@ let leaderboardOffset = 0;
 let leaderboardTotal = highScores.length;
 let leaderboardLoading = false;
 let leaderboardError = "";
+
+if (gameVersion) {
+  gameVersion.textContent = GAME_VERSION;
+}
 
 function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -441,7 +465,7 @@ function currentBiome() {
 }
 
 function addPlatform(x, y, w) {
-  platforms.push({ x, y, w, h: PLATFORM_HEIGHT });
+  platforms.push({ id: platformIdCounter++, x, y, w, h: PLATFORM_HEIGHT });
 }
 
 function addCoin(x, y) {
@@ -572,6 +596,8 @@ function resetGame() {
   coinScore = 0;
   enemyScore = 0;
   powerScore = 0;
+  styleScore = 0;
+  streakScore = 0;
   elapsedTime = 0;
   scrollSpeed = 0;
   animTime = 0;
@@ -603,6 +629,12 @@ function resetGame() {
   lastTipIndex = -1;
   deathSplashTimer = 0;
   deathSplashDrops = [];
+  floorStreak = 0;
+  lastLandingPlatformId = null;
+  platformIdCounter = 1;
+  airStartX = 0;
+  airMaxDistance = 0;
+  airTime = 0;
   closeScoreEntry();
 
   const baseY = canvas.height - 20;
@@ -659,7 +691,6 @@ function update(dt) {
   }
   const controlsEnabled = state === "play";
 
-  const MAX_SPEED = 150;
   const ACCEL = 900;
   const FRICTION = 1100;
   const JUMP = 360;
@@ -685,6 +716,8 @@ function update(dt) {
     if (player.vx < 0) player.vx = Math.min(0, player.vx + FRICTION * dt);
   }
   player.vx = clamp(player.vx, -MAX_SPEED, MAX_SPEED);
+  const speedRatio = Math.abs(player.vx) / MAX_SPEED;
+  const superReady = speedRatio >= SUPER_JUMP_THRESHOLD;
 
   const wasOnGround = player.onGround;
   const nextX = player.x + player.vx * dt;
@@ -701,17 +734,22 @@ function update(dt) {
     if (player.onGround) {
       const speedBoost = Math.min(Math.abs(player.vx) * 0.45, 90);
       const comboHop = comboTimer > 0 && slideWindow > 0;
+      const superMultiplier = superReady ? SUPER_JUMP_MULT : 1;
       if (comboHop) {
         wallCombo += 1;
         comboTimer = WALL_COMBO_WINDOW;
-      const hopMultiplier = 1 + wallCombo * 0.25;
+        const hopMultiplier = 1 + wallCombo * 0.25;
         const hopGain = Math.round(COMBO_HOP_POINTS * hopMultiplier);
         comboScore += hopGain;
         spawnSparkles(player.x + player.w / 2, player.y + player.h / 2);
         spawnComboPopup(`+${hopGain}`, player.x + player.w / 2, player.y - 6);
       }
       const hopBoost = comboHop ? 1 + Math.min(wallCombo * 0.05, 0.3) : 1;
-      player.vy = -(JUMP * hopBoost * powerMultiplier + speedBoost);
+      player.vy = -(JUMP * hopBoost * powerMultiplier * superMultiplier + speedBoost);
+      if (superReady) {
+        styleScore += STYLE_SUPER_JUMP;
+        spawnComboPopup(`SUPER +${STYLE_SUPER_JUMP}`, player.x + player.w / 2, player.y - 16, "#7fffd2");
+      }
       player.onGround = false;
       doubleJumpAvailable = false;
       slideWindow = 0;
@@ -723,6 +761,8 @@ function update(dt) {
       const comboMultiplier = 1 + wallCombo * 0.25;
       const comboGain = Math.round(80 * wallCombo * comboMultiplier);
       comboScore += comboGain;
+      const wallStyle = STYLE_WALL_JUMP + Math.round(speedRatio * 40);
+      styleScore += wallStyle;
 
       const comboBoost = 1 + Math.min(wallCombo * 0.08, 0.4);
       player.vy = -(JUMP * 0.95 * comboBoost * powerMultiplier);
@@ -733,6 +773,7 @@ function update(dt) {
       wallJumpLockSide = wallSide;
       doubleJumpAvailable = true;
       spawnComboPopup(`+${comboGain}`, player.x + player.w / 2, player.y - 8);
+      spawnComboPopup(`STYLE +${wallStyle}`, player.x + player.w / 2, player.y - 20, "#7fffd2");
       playWallSound();
     } else if (doubleJumpAvailable) {
       player.vy = -(JUMP * 0.9 * powerMultiplier);
@@ -755,6 +796,7 @@ function update(dt) {
   player.x = clamp(player.x, 0, canvas.width - player.w);
 
   player.onGround = false;
+  let landedPlatform = null;
   if (player.vy >= 0) {
     for (const platform of platforms) {
       const platformTop = platform.y;
@@ -765,14 +807,49 @@ function update(dt) {
         player.y = platformTop - player.h;
         player.vy = 0;
         player.onGround = true;
+        landedPlatform = platform;
         break;
       }
     }
   }
 
+  if (!player.onGround && wasOnGround) {
+    airStartX = player.x;
+    airMaxDistance = 0;
+    airTime = 0;
+  }
+  if (!player.onGround) {
+    airTime += dt;
+    airMaxDistance = Math.max(airMaxDistance, Math.abs(player.x - airStartX));
+  }
+
   if (player.onGround && !wasOnGround) {
     landSquash = 1;
     doubleJumpAvailable = false;
+    if (landedPlatform) {
+      if (landedPlatform.id === lastLandingPlatformId) {
+        floorStreak = 1;
+      } else {
+        floorStreak = Math.max(1, floorStreak + 1);
+        if (floorStreak > 1) {
+          const streakGain = STREAK_BASE_POINTS * floorStreak;
+          streakScore += streakGain;
+          spawnComboPopup(`STREAK x${floorStreak} +${streakGain}`, player.x + player.w / 2, player.y - 18, "#b7f5ff");
+        }
+      }
+      lastLandingPlatformId = landedPlatform.id;
+    } else {
+      floorStreak = 0;
+      lastLandingPlatformId = null;
+    }
+    if (airMaxDistance >= LONG_JUMP_DISTANCE) {
+      styleScore += STYLE_LONG_JUMP;
+      spawnComboPopup(`LONG +${STYLE_LONG_JUMP}`, player.x + player.w / 2, player.y - 30, "#7fffd2");
+    }
+    if (Math.abs(player.vx) >= SPEED_STYLE_THRESHOLD) {
+      styleScore += STYLE_SPEED;
+      spawnComboPopup(`SPEED +${STYLE_SPEED}`, player.x + player.w / 2, player.y - 42, "#7fffd2");
+    }
     if (comboTimer > 0) {
       slideWindow = SLIDE_WINDOW;
     }
@@ -862,7 +939,14 @@ function update(dt) {
   const targetCamera = player.y - canvas.height * 0.45;
   if (targetCamera < cameraY) cameraY = targetCamera;
 
-  score = Math.floor(maxHeight) + coinScore + comboScore + enemyScore + Math.round(powerScore);
+  score =
+    Math.floor(maxHeight) +
+    coinScore +
+    comboScore +
+    enemyScore +
+    Math.round(powerScore) +
+    styleScore +
+    streakScore;
   if (score > highScore) {
     highScore = score;
     localStorage.setItem("jumpnbean_highscore", String(highScore));
@@ -1248,40 +1332,65 @@ function drawPlayer() {
 function drawUI() {
   const biome = currentBiome();
   const compactHud = window.innerWidth < 520 || window.innerHeight < 420;
+  const speedRatio = Math.min(1, Math.abs(player.vx) / MAX_SPEED);
   ctx.save();
   ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
   ctx.shadowBlur = 4;
   if (compactHud) {
+    let y = 16;
     ctx.fillStyle = "#ffe285";
     ctx.font = "8px 'Courier New', monospace";
-    ctx.fillText(`Score ${score}`, 10, 16);
+    ctx.fillText(`Score ${score}`, 10, y);
+    y += 12;
     ctx.fillStyle = "#b7f5ff";
-    ctx.fillText(`Lv ${levelsEarned}`, 10, 28);
+    ctx.fillText(`Lv ${levelsEarned}`, 10, y);
+    y += 10;
     ctx.fillStyle = "#f3ead7";
     ctx.font = "7px 'Courier New', monospace";
-    ctx.fillText(`High ${highScore}`, 10, 38);
+    ctx.fillText(`High ${highScore}`, 10, y);
+    y += 10;
     if (invincibleTimer > 0) {
       ctx.fillStyle = "#7fffd2";
-      ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 10, 50);
+      ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 10, y);
+      y += 10;
     }
+    const meterWidth = 54;
+    const meterHeight = 3;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.fillRect(10, y, meterWidth, meterHeight);
+    ctx.fillStyle = speedRatio >= SUPER_JUMP_THRESHOLD ? "#7fffd2" : "#ffe285";
+    ctx.fillRect(10, y, meterWidth * speedRatio, meterHeight);
   } else {
+    let y = 20;
     ctx.fillStyle = "#ffe285";
     ctx.font = "10px 'Courier New', monospace";
-    ctx.fillText(`Score ${score}`, 12, 20);
+    ctx.fillText(`Score ${score}`, 12, y);
+    y += 14;
     ctx.fillStyle = "#b7f5ff";
-    ctx.fillText(`Levels ${levelsEarned}`, 12, 34);
+    ctx.fillText(`Levels ${levelsEarned}`, 12, y);
+    y += 14;
     ctx.fillStyle = "#f3ead7";
     ctx.font = "8px 'Courier New', monospace";
-    ctx.fillText(`High ${highScore}`, 12, 48);
-    ctx.fillText(`${biome.name}`, 12, 58);
+    ctx.fillText(`High ${highScore}`, 12, y);
+    y += 10;
+    ctx.fillText(`${biome.name}`, 12, y);
+    y += 10;
     if (comboTimer > 0 && wallCombo > 0) {
       ctx.fillStyle = "#ffe285";
-      ctx.fillText(`Wall Combo x${wallCombo}`, 12, 68);
+      ctx.fillText(`Wall Combo x${wallCombo}`, 12, y);
+      y += 10;
     }
     if (invincibleTimer > 0) {
       ctx.fillStyle = "#7fffd2";
-      ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 12, 78);
+      ctx.fillText(`Power ${invincibleTimer.toFixed(1)}s`, 12, y);
+      y += 10;
     }
+    const meterWidth = 80;
+    const meterHeight = 4;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.fillRect(12, y + 2, meterWidth, meterHeight);
+    ctx.fillStyle = speedRatio >= SUPER_JUMP_THRESHOLD ? "#7fffd2" : "#ffe285";
+    ctx.fillRect(12, y + 2, meterWidth * speedRatio, meterHeight);
   }
   ctx.restore();
 
@@ -1580,6 +1689,7 @@ function renderGameToText() {
 
   const payload = {
     mode: state,
+    version: GAME_VERSION,
     coord: "origin top-left, +x right, +y down",
     player: {
       x: Math.round(player.x),
@@ -1597,6 +1707,10 @@ function renderGameToText() {
     coinScore,
     enemyScore,
     powerScore: Math.round(powerScore),
+    styleScore,
+    streakScore,
+    floorStreak,
+    speed: Number(Math.abs(player.vx).toFixed(2)),
     scrollSpeed: Number(scrollSpeed.toFixed(1)),
     time: Number(elapsedTime.toFixed(2)),
     wallCombo,
