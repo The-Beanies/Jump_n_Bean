@@ -310,28 +310,36 @@ h1 {
     align-items: center;
   }
 
-  .controls {
-    order: 3;
+  .sub {
+    order: 1;
   }
 
   .hint {
+    order: 2;
+    margin: 6px 0 14px;
+  }
+
+  #game {
+    order: 3;
+  }
+
+  .controls {
     order: 4;
-    margin: 6px 0 8px;
   }
 
   .touch-controls {
     order: 5;
     display: flex;
-    margin-top: 6px;
+    margin-top: 10px;
   }
 
   .touch-btn {
-    min-width: 96px;
-    min-height: 96px;
+    min-width: 108px;
+    min-height: 108px;
   }
   .touch-btn.jump {
-    min-width: 200px;
-    min-height: 104px;
+    min-width: 224px;
+    min-height: 116px;
   }
 
   .fullscreen-btn {

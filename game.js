@@ -2,7 +2,7 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
-const GAME_VERSION = "v1.12";
+const GAME_VERSION = "v1.13";
 const FIXED_DT = 1 / 60;
 const MAX_SPEED = 150;
 const PLATFORM_HEIGHT = 8;

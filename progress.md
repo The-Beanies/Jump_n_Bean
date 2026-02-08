@@ -43,3 +43,4 @@ Original prompt: Create a small classic game with minimal scope. Its Beany a cof
 - 2026-02-07: Made the Save button morph into "New Run" after saving to avoid hard-to-reach restart button on mobile.
 - 2026-02-07: Limited leaderboard paging to 20 entries per page.
 - 2026-02-08: Added more combo/style/streak/level SFX hooks, improved fullscreen toggle with soft fallback + CSS, and bumped version to v1.12.
+- 2026-02-08: Reordered mobile layout so hint text sits above controls, increased touch button sizes, and bumped version to v1.13.
