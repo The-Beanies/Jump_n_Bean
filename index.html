@@ -2,17 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Jump n Bean</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="wrap">
-    <h1>Jump n Bean <span id="game-version" class="version">v1.9</span></h1>
+    <h1>Jump n Bean <span id="game-version" class="version">v1.10</span></h1>
     <p class="sub">Climb upward through new biomes. Collect tokens for score.</p>
     <canvas id="game" width="320" height="192" aria-label="Jump n Bean game"></canvas>
     <div class="controls">
       <button id="music-toggle" class="music-btn" type="button">Music: Off</button>
+      <button id="fullscreen-toggle" class="music-btn fullscreen-btn" type="button">Fullscreen</button>
     </div>
     <div class="touch-controls" aria-hidden="true">
       <div class="touch-pad">

@@ -39,5 +39,6 @@ Original prompt: Create a small classic game with minimal scope. Its Beany a cof
 - 2026-02-07: Added random death tips and full-screen blood splash on death.
 - 2026-02-07: Added super jump, momentum meter, floor streak rule (no same-platform streak), and style bonuses for wall/long/speed jumps.
 - 2026-02-07: Added game version display (starting at v1.9) and included version in render_game_to_text.
+- 2026-02-07: Adjusted mobile layout (moved hint above buttons, bigger jump), added fullscreen button, and disabled pinch zoom. Bumped version to v1.10.
 - 2026-02-07: Made the Save button morph into "New Run" after saving to avoid hard-to-reach restart button on mobile.
 - 2026-02-07: Limited leaderboard paging to 20 entries per page.

@@ -2,7 +2,7 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
-const GAME_VERSION = "v1.9";
+const GAME_VERSION = "v1.10";
 const FIXED_DT = 1 / 60;
 const MAX_SPEED = 150;
 const PLATFORM_HEIGHT = 8;
@@ -190,6 +190,7 @@ const gameVersion = document.getElementById("game-version");
 const touchLeft = document.getElementById("touch-left");
 const touchRight = document.getElementById("touch-right");
 const touchJump = document.getElementById("touch-jump");
+const fullscreenToggle = document.getElementById("fullscreen-toggle");
 let scoreSaved = false;
 let lastName = localStorage.getItem(LAST_NAME_KEY) || "";
 let leaderboardOffset = 0;
@@ -1543,6 +1544,32 @@ if (musicButton) {
     musicButton.blur();
   });
 }
+
+if (fullscreenToggle) {
+  fullscreenToggle.addEventListener("click", () => {
+    toggleFullscreen();
+    fullscreenToggle.blur();
+  });
+}
+
+document.addEventListener(
+  "touchstart",
+  (event) => {
+    if (event.touches && event.touches.length > 1) {
+      event.preventDefault();
+    }
+  },
+  { passive: false }
+);
+document.addEventListener(
+  "touchmove",
+  (event) => {
+    if (event.touches && event.touches.length > 1) {
+      event.preventDefault();
+    }
+  },
+  { passive: false }
+);
 
 function bindHoldButton(button, onDown, onUp) {
   if (!button) return;

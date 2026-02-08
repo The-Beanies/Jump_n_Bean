@@ -51,6 +51,7 @@ h1 {
   margin-top: 10px;
   display: flex;
   justify-content: center;
+  gap: 10px;
 }
 
 .music-btn {
@@ -66,6 +67,10 @@ h1 {
 .music-btn:focus-visible {
   outline: 2px solid #f5e7c8;
   outline-offset: 2px;
+}
+
+.fullscreen-btn {
+  display: none;
 }
 
 .score-entry {
@@ -240,6 +245,7 @@ h1 {
   gap: 18px;
   margin-top: 14px;
   user-select: none;
+  touch-action: none;
 }
 
 .touch-pad {
@@ -259,7 +265,7 @@ h1 {
   border-radius: 12px;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  touch-action: manipulation;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -277,14 +283,43 @@ h1 {
 }
 
 @media (pointer: coarse) {
-  .touch-controls {
-    display: flex;
+  html,
+  body {
+    touch-action: none;
+    overscroll-behavior: none;
   }
+
+  .wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .controls {
+    order: 3;
+  }
+
+  .hint {
+    order: 4;
+    margin: 6px 0 8px;
+  }
+
+  .touch-controls {
+    order: 5;
+    display: flex;
+    margin-top: 6px;
+  }
+
   .touch-btn {
-    min-width: 86px;
-    min-height: 86px;
+    min-width: 96px;
+    min-height: 96px;
   }
   .touch-btn.jump {
-    min-width: 170px;
+    min-width: 200px;
+    min-height: 104px;
+  }
+
+  .fullscreen-btn {
+    display: inline-flex;
   }
 }
