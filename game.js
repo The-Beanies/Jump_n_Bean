@@ -2,7 +2,7 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
-const GAME_VERSION = "v1.10";
+const GAME_VERSION = "v1.12";
 const FIXED_DT = 1 / 60;
 const MAX_SPEED = 150;
 const PLATFORM_HEIGHT = 8;
@@ -432,6 +432,34 @@ function playLoseSound() {
   playTone(180, 0.2, "sawtooth", 0.06);
 }
 
+function playStyleSound() {
+  playTone(760, 0.08, "triangle", 0.05);
+}
+
+function playStreakSound() {
+  playTone(520, 0.06, "square", 0.05);
+  playTone(660, 0.08, "triangle", 0.05);
+}
+
+function playComboSound() {
+  playTone(620, 0.07, "square", 0.05);
+  playTone(860, 0.08, "triangle", 0.05);
+}
+
+function playLevelSound() {
+  playTone(420, 0.1, "triangle", 0.05);
+  playTone(720, 0.12, "square", 0.05);
+}
+
+function playSuperSound() {
+  playTone(980, 0.1, "triangle", 0.07);
+  playTone(740, 0.12, "square", 0.05);
+}
+
+function playSplashSound() {
+  playTone(140, 0.18, "sawtooth", 0.08);
+}
+
 function triggerDeath() {
   if (state === "lose" || state === "dying") return;
   state = "dying";
@@ -440,6 +468,7 @@ function triggerDeath() {
   currentTip = pickRandomTip();
   tipIndex += 1;
   spawnDeathSplash();
+  playSplashSound();
   playLoseSound();
 }
 
@@ -744,12 +773,14 @@ function update(dt) {
         comboScore += hopGain;
         spawnSparkles(player.x + player.w / 2, player.y + player.h / 2);
         spawnComboPopup(`+${hopGain}`, player.x + player.w / 2, player.y - 6);
+        playComboSound();
       }
       const hopBoost = comboHop ? 1 + Math.min(wallCombo * 0.05, 0.3) : 1;
       player.vy = -(JUMP * hopBoost * powerMultiplier * superMultiplier + speedBoost);
       if (superReady) {
         styleScore += STYLE_SUPER_JUMP;
         spawnComboPopup(`SUPER +${STYLE_SUPER_JUMP}`, player.x + player.w / 2, player.y - 16, "#7fffd2");
+        playSuperSound();
       }
       player.onGround = false;
       doubleJumpAvailable = false;
@@ -775,6 +806,8 @@ function update(dt) {
       doubleJumpAvailable = true;
       spawnComboPopup(`+${comboGain}`, player.x + player.w / 2, player.y - 8);
       spawnComboPopup(`STYLE +${wallStyle}`, player.x + player.w / 2, player.y - 20, "#7fffd2");
+      if (wallCombo >= 2) playComboSound();
+      playStyleSound();
       playWallSound();
     } else if (doubleJumpAvailable) {
       player.vy = -(JUMP * 0.9 * powerMultiplier);
@@ -836,6 +869,7 @@ function update(dt) {
           const streakGain = STREAK_BASE_POINTS * floorStreak;
           streakScore += streakGain;
           spawnComboPopup(`STREAK x${floorStreak} +${streakGain}`, player.x + player.w / 2, player.y - 18, "#b7f5ff");
+          playStreakSound();
         }
       }
       lastLandingPlatformId = landedPlatform.id;
@@ -846,10 +880,12 @@ function update(dt) {
     if (airMaxDistance >= LONG_JUMP_DISTANCE) {
       styleScore += STYLE_LONG_JUMP;
       spawnComboPopup(`LONG +${STYLE_LONG_JUMP}`, player.x + player.w / 2, player.y - 30, "#7fffd2");
+      playStyleSound();
     }
     if (Math.abs(player.vx) >= SPEED_STYLE_THRESHOLD) {
       styleScore += STYLE_SPEED;
       spawnComboPopup(`SPEED +${STYLE_SPEED}`, player.x + player.w / 2, player.y - 42, "#7fffd2");
+      playStyleSound();
     }
     if (comboTimer > 0) {
       slideWindow = SLIDE_WINDOW;
@@ -857,6 +893,7 @@ function update(dt) {
     if (maxHeight > lastPlateauHeight + 80) {
       paceLevel += 1;
       lastPlateauHeight = maxHeight;
+      playLevelSound();
     }
   }
   landSquash = Math.max(0, landSquash - dt * 3);
@@ -1481,16 +1518,71 @@ function resizeDisplay() {
   canvas.style.height = `${Math.floor(canvas.height * finalScale)}px`;
 }
 
+function isFullscreenActive() {
+  return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function setFullscreenClass(active) {
+  document.body.classList.toggle("fullscreen-active", active);
+}
+
+function syncFullscreen() {
+  setFullscreenClass(isFullscreenActive());
+  resizeDisplay();
+}
+
+function requestFullscreen() {
+  const target =
+    canvas.requestFullscreen ||
+    canvas.webkitRequestFullscreen ||
+    canvas.mozRequestFullScreen ||
+    canvas.msRequestFullscreen
+      ? canvas
+      : document.documentElement;
+  const request =
+    target.requestFullscreen ||
+    target.webkitRequestFullscreen ||
+    target.mozRequestFullScreen ||
+    target.msRequestFullscreen;
+  if (!request) {
+    setFullscreenClass(true);
+    resizeDisplay();
+    return;
+  }
+  const result = request.call(target);
+  if (result?.catch) {
+    result.catch(() => {
+      setFullscreenClass(true);
+      resizeDisplay();
+    });
+  }
+}
+
+function exitFullscreen() {
+  const exit =
+    document.exitFullscreen ||
+    document.webkitExitFullscreen ||
+    document.mozCancelFullScreen ||
+    document.msExitFullscreen;
+  if (exit) {
+    exit.call(document);
+  }
+  setFullscreenClass(false);
+  resizeDisplay();
+}
+
 function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    canvas.requestFullscreen?.();
+  const softActive = document.body.classList.contains("fullscreen-active");
+  if (isFullscreenActive() || softActive) {
+    exitFullscreen();
   } else {
-    document.exitFullscreen?.();
+    requestFullscreen();
   }
 }
 
 window.addEventListener("resize", resizeDisplay);
-window.addEventListener("fullscreenchange", resizeDisplay);
+window.addEventListener("fullscreenchange", syncFullscreen);
+document.addEventListener("webkitfullscreenchange", syncFullscreen);
 
 window.addEventListener("keydown", (event) => {
   if (event.code === "Space" && document.activeElement === musicButton) {
@@ -1546,10 +1638,15 @@ if (musicButton) {
 }
 
 if (fullscreenToggle) {
-  fullscreenToggle.addEventListener("click", () => {
-    toggleFullscreen();
-    fullscreenToggle.blur();
-  });
+  fullscreenToggle.addEventListener(
+    "pointerdown",
+    (event) => {
+      event.preventDefault();
+      toggleFullscreen();
+      fullscreenToggle.blur();
+    },
+    { passive: false }
+  );
 }
 
 document.addEventListener(
